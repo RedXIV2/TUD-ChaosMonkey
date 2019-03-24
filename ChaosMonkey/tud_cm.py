@@ -6,7 +6,10 @@ import sys
 import boto3
 import random
 import time
-from notification import sendSNSNotification
+
+from lambda_notification import ActivateLambdaNotifcation
+
+#from notification import sendSNSNotification
 
 ##############################
 # All my glorious utilities  #
@@ -138,7 +141,6 @@ if result == "Passed":
     testResultStr = "It took {} seconds to get back to {} instances".format(testTime, instanceCount)
     print(testResultStr)
     resultForNotification = "Dave Hill's TUD_CM test PASSED. "+testResultStr
-    #raise SystemExit
 elif result == "Failed":
     testResultStr = "Chaos Monkey has won. We have not gotten back to the original number of instances. Goodbye"
     print(testResultStr)
@@ -147,4 +149,4 @@ else:
     print("Something has gone wrong in the test, Dave should debug further")
     resultForNotification = "While the test goofed, you got a notification still from Dave Hill, yay!"
 
-sendSNSNotification(resultForNotification)
+ActivateLambdaNotifcation(resultForNotification)
