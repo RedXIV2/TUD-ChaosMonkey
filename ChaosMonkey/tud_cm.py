@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+#
+# Author: Dave Hill
 
 import sys
 import boto3
 import random
 import time
-
+from notification import sendSNSNotification
 
 ##############################
 # All my glorious utilities  #
@@ -17,19 +19,12 @@ def convertEC2iterToList(instances):
         myBeautifulList.append(instance.id)
     return myBeautifulList
 
-
-print("Welcome to the TUD Chaos Monkey!")
-print("Checking AWS ...")
-
 # Gets the AWS account details to ensure we're using the right account
 def accountDetails():
     stsclient = boto3.client('sts')                 # STS stands for Security Token Service
     myDetails = stsclient.get_caller_identity()
     print("Account ID = ", myDetails["Account"])
     print("User ID = ", myDetails["UserId"])
-
-
-accountDetails()
 
 # gets the list of EC2 instances running as an iterable object
 def getEc2instances():
@@ -68,6 +63,28 @@ def timingRebuild(total):
             return "Failed"
     return "Passed"
 
+# Picks X number of instances to kill
+def breakingStuff(amount):
+    currentInstances = getEc2instances()
+    currentInstancesAsList = convertEC2iterToList(currentInstances)
+    while int(amount) > 0:
+        nextTarget = random.choice(currentInstancesAsList)
+        currentInstancesAsList.remove(nextTarget)
+        instancesImpactedStr = "The following instance ID {} will be disrupted:".format(nextTarget)
+        print(instancesImpactedStr)
+        killAnInstance(nextTarget)
+        amount = amount - 1
+
+
+##########################################
+# The actual code that runs ChaosMonkey  #
+##########################################
+
+
+print("Welcome to the TUD Chaos Monkey!")
+print("Checking AWS ...")
+
+accountDetails()
 
 runningMachines = getEc2instances()
 printEc2instances(runningMachines)
@@ -75,8 +92,6 @@ instanceCount = countEc2instances(runningMachines)
 
 instanceCountStr = "You current have {} instances running".format(instanceCount)
 print(instanceCountStr)
-
-
 
 monkeyShouldSmash = input("How many instances would you like to disrupt? ")
 
@@ -91,17 +106,6 @@ while int(monkeyShouldSmash) > instanceCount:
 
 
 print("Please wait while we unleash the chaos monkey...")
-
-def breakingStuff(amount):
-    currentInstances = getEc2instances()
-    currentInstancesAsList = convertEC2iterToList(currentInstances)
-    while int(amount) > 0:
-        nextTarget = random.choice(currentInstancesAsList)
-        currentInstancesAsList.remove(nextTarget)
-        instancesImpactedStr = "The following instance ID {} will be disrupted:".format(nextTarget)
-        print(instancesImpactedStr)
-        killAnInstance(nextTarget)
-        amount = amount - 1
 
 
 breakingStuff(int(monkeyShouldSmash))
@@ -121,9 +125,8 @@ print(updatedInstanceCountStr)
 print("Now timing reinstatement")
 print("Please wait while we test our recoverability")
 result = timingRebuild(instanceCount)
-
 endTime = time.time()
-
+resultForNotification = ""
 
 #print(instanceCountStr)
 
@@ -134,6 +137,14 @@ testTime = endTime - startTime
 if result == "Passed":
     testResultStr = "It took {} seconds to get back to {} instances".format(testTime, instanceCount)
     print(testResultStr)
-    raise SystemExit
+    resultForNotification = "Dave Hill's TUD_CM test PASSED. "+testResultStr
+    #raise SystemExit
+elif result == "Failed":
+    testResultStr = "Chaos Monkey has won. We have not gotten back to the original number of instances. Goodbye"
+    print(testResultStr)
+    resultForNotification = "Dave Hill's TUD_CM test FAILED. " + testResultStr
+else:
+    print("Something has gone wrong in the test, Dave should debug further")
+    resultForNotification = "While the test goofed, you got a notification still from Dave Hill, yay!"
 
-print("Chaos Monkey has won. We have not gotten back to the original number of instances. Goodbye")
+sendSNSNotification(resultForNotification)
