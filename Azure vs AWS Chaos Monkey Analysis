@@ -3,17 +3,30 @@ Azure vs AWS Chaos Monkey Analysis
 Component Comparison 
 
 +-------------------------+----------------------------+
-|     Azure Version       |        AWS Version         |
+|  ++ Azure Version ++    |     ++ AWS Version ++      |
 +-------------------------+----------------------------+ 
 | Azure Virtual Machines  |            EC2             |
 +-------------------------+----------------------------+ 
 |      Functions          |          Lambda            |
 +-------------------------+----------------------------+ 
-|                         |                            |
+|  Azure AutoScaling      |     AutoScaling Rules      |
 +-------------------------+----------------------------+ 
-|                         |                            |
+|   Availablilty Sets     |    Autoscaling Groups      |
 +-------------------------+----------------------------+ 
-|                         |                            |
+|  Azure Active Directory |           IAM              |
 +-------------------------+----------------------------+ 
-|                         |                            |
+|    Notification Hubs    |           SNS              |
 +-------------------------+----------------------------+ 
+|  Service Bus Messaging  |           SQS              |
++-------------------------+----------------------------+ 
+
+aws CLI vs azure CLI
+boto3 vs azure SDKs
+
+For Azure App Service, select an App Service Plan that offers multiple instances. 
+For Azure Cloud Services, configure each of your roles to use multiple instances. 
+For Azure Virtual Machines (VMs), ensure that your VM architecture includes more than one VM and that each VM is included in an availability set.
+
+Azure Checking functions for health checks (Azure application insights)
+AWS health/readiness checks (CloudWatch event logs)
+
