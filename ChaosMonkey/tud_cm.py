@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 #
 # Author: Dave Hill
+# Chaos monkey code will list EC2s and knock X number out depending on input and trigger a notification
 
-import sys
 import boto3
 import random
 import time
-
 from lambda_notification import ActivateLambdaNotifcation
 
-#from notification import sendSNSNotification
+# To test direct interaction with SNS notifications uncomment the below line and update the bottom line
+# from notification import sendSNSNotification
+
+TIME_TO_REVIVE = 600
+
 
 ##############################
 # All my glorious utilities  #
@@ -33,7 +36,7 @@ def accountDetails():
 def getEc2instances():
     ec2client = boto3.resource('ec2')
     instances = ec2client.instances.filter(
-    Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])   # this filter ensures we only get running EC2s
     return instances
 
 # counts the EC2 instances in the iterable object passed in.
@@ -58,11 +61,11 @@ def killAnInstance(target):
 # timing the reestablishment of VMs back to original numbers
 def timingRebuild(total):
     machines = 0
-    timeForFunction = time.time()
-    while machines < total:
+    timeForFunction = time.time()       # Grab current time
+    while machines < total:             # continue checking the machines until it matches the original number
         testing = getEc2instances()
         machines = countEc2instances(testing)
-        if time.time() - timeForFunction > 600:
+        if time.time() - timeForFunction > TIME_TO_REVIVE:  # Implement time limit for revival checks
             return "Failed"
     return "Passed"
 
@@ -87,8 +90,10 @@ def breakingStuff(amount):
 print("Welcome to the TUD Chaos Monkey!")
 print("Checking AWS ...")
 
+# Check which AWS account is in use
 accountDetails()
 
+# initial infrastructure assessment
 runningMachines = getEc2instances()
 printEc2instances(runningMachines)
 instanceCount = countEc2instances(runningMachines)
@@ -96,6 +101,7 @@ instanceCount = countEc2instances(runningMachines)
 instanceCountStr = "You current have {} instances running".format(instanceCount)
 print(instanceCountStr)
 
+# Get the number of instances to kill with some validation
 monkeyShouldSmash = input("How many instances would you like to disrupt? ")
 
 if int(monkeyShouldSmash) == 0:
@@ -107,36 +113,36 @@ if int(monkeyShouldSmash) == 0:
 while int(monkeyShouldSmash) > instanceCount:
     monkeyShouldSmash = input("...You just saw how many is there, you know you asked for two many, try again ")
 
-
 print("Please wait while we unleash the chaos monkey...")
 
-
+# chaos begins here
 breakingStuff(int(monkeyShouldSmash))
 
+# tracking time after killing instances to track revival time
 startTime = time.time()
 
-
+# confirm updated EC2 instances
 updatedRunningMachines = getEc2instances()
 printEc2instances(updatedRunningMachines)
 updatedInstanceCount = countEc2instances(updatedRunningMachines)
-
 updatedInstanceCountStr = "You now have {} instances running".format(updatedInstanceCount)
-
 print(updatedInstanceCountStr)
 
-
+# start checking repeatedly for the machines to have recovered
 print("Now timing reinstatement")
 print("Please wait while we test our recoverability")
 result = timingRebuild(instanceCount)
+
+# grab end time to calculate recovery time
 endTime = time.time()
 resultForNotification = ""
 
-#print(instanceCountStr)
-
 print("====CHAOS MONKEY TEST RESULT====")
 
+# time to recover obtained
 testTime = endTime - startTime
 
+# build test results output
 if result == "Passed":
     testResultStr = "It took {} seconds to get back to {} instances".format(testTime, instanceCount)
     print(testResultStr)
@@ -149,4 +155,5 @@ else:
     print("Something has gone wrong in the test, Dave should debug further")
     resultForNotification = "While the test goofed, you got a notification still from Dave Hill, yay!"
 
+# Activate the reporting lambda
 ActivateLambdaNotifcation(resultForNotification)

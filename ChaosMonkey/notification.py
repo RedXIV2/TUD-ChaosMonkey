@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Author: Dave Hill
+# This code will trigger a SNS notification
 
 import boto3
 
