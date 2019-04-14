@@ -30,3 +30,4 @@ For Azure Virtual Machines (VMs), ensure that your VM architecture includes more
 Azure Checking functions for health checks (Azure application insights)
 AWS health/readiness checks (CloudWatch event logs)
 
+Scale sets in Azure do state that they replicate the AutoScaling features of AWS but unable to prove this. 
